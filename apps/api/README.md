@@ -280,3 +280,82 @@ Apenas o criador ou `owner/admin` podem editar. `viewer` nao gerencia transacoes
 Exclui fisicamente a transacao nesta primeira versao. Apenas criador ou `owner/admin`.
 
 Soft delete deve ser adicionado depois que auditoria e regras de retencao financeira estiverem fechadas.
+
+## Rotas de dashboard financeiro
+
+Todas as rotas de dashboard exigem autenticacao e membership ativo no grupo:
+
+```http
+Authorization: Bearer seu_access_token
+```
+
+As agregacoes consideram apenas transacoes `confirmed` e respeitam privacidade: transacoes com `isPrivate=true` so entram nos totais do criador.
+
+### GET /groups/:groupId/dashboard/summary
+
+Resumo financeiro por mes.
+
+```txt
+GET /groups/:groupId/dashboard/summary?month=5&year=2026
+```
+
+Resposta:
+
+```json
+{
+  "income": 5000,
+  "expense": 3200,
+  "balance": 1800
+}
+```
+
+Regras:
+
+- `income`: soma de receitas.
+- `expense`: soma de despesas.
+- `balance`: `income - expense`.
+- `month` e `year` sao obrigatorios.
+
+### GET /groups/:groupId/dashboard/categories
+
+Agrupa despesas por categoria, do maior total para o menor.
+
+```txt
+GET /groups/:groupId/dashboard/categories?month=5&year=2026
+```
+
+Resposta:
+
+```json
+[
+  {
+    "categoryId": "uuid-da-categoria",
+    "name": "Alimentacao",
+    "total": 1200
+  }
+]
+```
+
+`month` e `year` sao opcionais nesta rota, mas devem ser enviados juntos quando usados.
+
+### GET /groups/:groupId/dashboard/members
+
+Agrupa despesas por membro usando os `TransactionSplit`, ou seja, quanto cada pessoa assumiu na divisao.
+
+```txt
+GET /groups/:groupId/dashboard/members?month=5&year=2026
+```
+
+Resposta:
+
+```json
+[
+  {
+    "userId": "uuid-do-usuario",
+    "name": "Fabio",
+    "total": 1800
+  }
+]
+```
+
+`month` e `year` sao opcionais nesta rota, mas devem ser enviados juntos quando usados.
