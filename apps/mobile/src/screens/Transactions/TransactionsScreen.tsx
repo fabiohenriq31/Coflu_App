@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Button } from '../../components/Button';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
+import { Screen } from '../../components/Screen';
 import { TransactionListItem } from '../../components/TransactionListItem';
 import { getApiErrorMessage } from '../../services/api';
-import { transactionsService, type Transaction } from '../../services/transactions';
 import { useAuthStore } from '../../store/auth.store';
-import { useGroupStore } from '../../store/group.store';
+import { useGroupsStore } from '../../store/groups.store';
+import { useTransactionsStore } from '../../store/transactions.store';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { getCurrentPeriod } from '../../utils/date';
@@ -27,15 +23,17 @@ type Props = {
 
 export const TransactionsScreen = ({ onBack, onCreate, onOpenTransaction }: Props) => {
   const user = useAuthStore((state) => state.user);
-  const selectedGroup = useGroupStore((state) => state.selectedGroup);
-  const loadGroups = useGroupStore((state) => state.loadGroups);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const activeGroup = useGroupsStore((state) => state.activeGroup);
+  const fetchGroups = useGroupsStore((state) => state.fetchGroups);
+  const transactions = useTransactionsStore((state) => state.transactions);
+  const fetchTransactions = useTransactionsStore((state) => state.fetchTransactions);
+  const isLoadingTransactions = useTransactionsStore((state) => state.isLoadingTransactions);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
   const period = useMemo(() => getCurrentPeriod(), []);
 
-  const currency = selectedGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
+  const currency = activeGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
 
   const loadTransactions = useCallback(
     async (refreshing = false) => {
@@ -43,139 +41,84 @@ export const TransactionsScreen = ({ onBack, onCreate, onOpenTransaction }: Prop
       setIsRefreshing(refreshing);
 
       if (!refreshing) {
-        setIsLoading(true);
+        setHasLoaded(false);
       }
 
       try {
-        const group = selectedGroup ?? (await loadGroups())[0];
+        const group = activeGroup ?? (await fetchGroups())[0];
 
         if (!group) {
-          setTransactions([]);
           return;
         }
 
-        const data = await transactionsService.listTransactions(group.id, {
+        await fetchTransactions(group.id, {
           month: period.month,
           year: period.year,
         });
-
-        setTransactions(data);
       } catch (requestError) {
         setError(getApiErrorMessage(requestError));
       } finally {
-        setIsLoading(false);
+        setHasLoaded(true);
         setIsRefreshing(false);
       }
     },
-    [loadGroups, period.month, period.year, selectedGroup],
+    [activeGroup, fetchGroups, fetchTransactions, period.month, period.year],
   );
 
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={colors.brand.primary} size="large" />
-          <Text style={styles.loadingText}>Carregando transacoes...</Text>
-        </View>
-      </SafeAreaView>
-    );
+  if (!hasLoaded && isLoadingTransactions) {
+    return <LoadingState message="Carregando transacoes..." />;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            colors={[colors.brand.primary]}
-            onRefresh={() => loadTransactions(true)}
-            refreshing={isRefreshing}
-            tintColor={colors.brand.primary}
-          />
-        }
-      >
-        <View style={styles.header}>
-          <View>
-            <Pressable accessibilityRole="button" onPress={onBack}>
-              <Text style={styles.backText}>Dashboard</Text>
-            </Pressable>
-            <Text style={styles.title}>Transacoes</Text>
-            <Text style={styles.subtitle}>
-              {selectedGroup?.name ?? 'Selecione um grupo para continuar'}
-            </Text>
-          </View>
-          <Pressable accessibilityRole="button" onPress={onCreate} style={styles.newButton}>
-            <Text style={styles.newButtonText}>Nova</Text>
+    <Screen onRefresh={() => loadTransactions(true)} refreshing={isRefreshing}>
+      <View style={styles.header}>
+        <View>
+          <Pressable accessibilityRole="button" onPress={onBack}>
+            <Text style={styles.backText}>Dashboard</Text>
           </Pressable>
+          <Text style={styles.title}>Transacoes</Text>
+          <Text style={styles.subtitle}>
+            {activeGroup?.name ?? 'Selecione um grupo para continuar'}
+          </Text>
         </View>
+        <Button onPress={onCreate} title="Nova" />
+      </View>
 
-        {error ? (
-          <View style={styles.messageCard}>
-            <Text style={styles.messageTitle}>Nao foi possivel carregar</Text>
-            <Text style={styles.messageText}>{error}</Text>
-          </View>
-        ) : null}
+      {error ? <ErrorState message={error} onRetry={() => loadTransactions()} /> : null}
 
-        {!selectedGroup && !error ? (
-          <View style={styles.messageCard}>
-            <Text style={styles.messageTitle}>Nenhum grupo encontrado</Text>
-            <Text style={styles.messageText}>
-              Crie um grupo financeiro para registrar transacoes.
-            </Text>
-          </View>
-        ) : null}
+      {!activeGroup && !error ? (
+        <EmptyState
+          description="Crie um grupo financeiro para registrar transacoes."
+          title="Nenhum grupo encontrado"
+        />
+      ) : null}
 
-        {selectedGroup && !transactions.length && !error ? (
-          <View style={styles.messageCard}>
-            <Text style={styles.messageTitle}>Sem transacoes neste mes</Text>
-            <Text style={styles.messageText}>
-              Toque em Nova para registrar a primeira movimentacao.
-            </Text>
-          </View>
-        ) : null}
+      {activeGroup && !transactions.length && !error ? (
+        <EmptyState
+          description="Toque em Nova para registrar a primeira movimentacao."
+          title="Sem transacoes neste mes"
+        />
+      ) : null}
 
-        <View style={styles.list}>
-          {transactions.map((transaction) => (
-            <TransactionListItem
-              currency={currency}
-              key={transaction.id}
-              onPress={() => onOpenTransaction(transaction.id)}
-              transaction={transaction}
-            />
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <View style={styles.list}>
+        {transactions.map((transaction) => (
+          <TransactionListItem
+            currency={currency}
+            key={transaction.id}
+            onPress={() => onOpenTransaction(transaction.id)}
+            transaction={transaction}
+          />
+        ))}
+      </View>
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background.light,
-  },
-  content: {
-    gap: 18,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 36,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    fontSize: 15,
-    letterSpacing: 0,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -200,42 +143,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: 14,
     lineHeight: 20,
-    letterSpacing: 0,
-  },
-  newButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 72,
-    minHeight: 42,
-    borderRadius: 14,
-    backgroundColor: colors.brand.primary,
-  },
-  newButtonText: {
-    ...typography.button,
-    color: colors.text.inverted,
-    fontSize: 14,
-    letterSpacing: 0,
-  },
-  messageCard: {
-    gap: 8,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.neutral.light,
-    borderRadius: 18,
-    backgroundColor: colors.neutral.white,
-  },
-  messageTitle: {
-    ...typography.title,
-    color: colors.text.primary,
-    fontSize: 17,
-    lineHeight: 23,
-    letterSpacing: 0,
-  },
-  messageText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    fontSize: 14,
-    lineHeight: 21,
     letterSpacing: 0,
   },
   list: {

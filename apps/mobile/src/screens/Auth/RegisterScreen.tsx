@@ -36,6 +36,11 @@ export const RegisterScreen = ({ onNavigateToLogin }: Props) => {
       return;
     }
 
+    if (!email.includes('@')) {
+      setError('Informe um email valido.');
+      return;
+    }
+
     if (password.length < 8) {
       setError('A senha deve ter pelo menos 8 caracteres.');
       return;

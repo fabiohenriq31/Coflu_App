@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CategoryItem } from '../../components/CategoryItem';
+import { Button } from '../../components/Button';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
+import { Screen } from '../../components/Screen';
 import { MemberItem } from '../../components/MemberItem';
 import { SummaryCard } from '../../components/SummaryCard';
 import { getApiErrorMessage } from '../../services/api';
@@ -21,7 +17,7 @@ import {
   type DashboardSummary,
 } from '../../services/dashboard';
 import { useAuthStore } from '../../store/auth.store';
-import { useGroupStore } from '../../store/group.store';
+import { useGroupsStore } from '../../store/groups.store';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { getCurrentPeriod } from '../../utils/date';
@@ -34,13 +30,13 @@ const getMonthLabel = (month: number, year: number) =>
 
 type Props = {
   onOpenTransactions: () => void;
+  onCreateTransaction: () => void;
 };
 
-export const DashboardScreen = ({ onOpenTransactions }: Props) => {
+export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Props) => {
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const selectedGroup = useGroupStore((state) => state.selectedGroup);
-  const loadGroups = useGroupStore((state) => state.loadGroups);
+  const activeGroup = useGroupsStore((state) => state.activeGroup);
+  const fetchGroups = useGroupsStore((state) => state.fetchGroups);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [categories, setCategories] = useState<DashboardCategory[]>([]);
   const [members, setMembers] = useState<DashboardMember[]>([]);
@@ -49,7 +45,7 @@ export const DashboardScreen = ({ onOpenTransactions }: Props) => {
   const [error, setError] = useState('');
 
   const period = useMemo(() => getCurrentPeriod(), []);
-  const currency = selectedGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
+  const currency = activeGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
 
   const loadDashboard = useCallback(
     async (refreshing = false) => {
@@ -61,10 +57,10 @@ export const DashboardScreen = ({ onOpenTransactions }: Props) => {
       }
 
       try {
-        const userGroups = await loadGroups();
-        const firstGroup = userGroups[0];
+        const userGroups = await fetchGroups();
+        const group = activeGroup ?? userGroups[0];
 
-        if (!firstGroup) {
+        if (!group) {
           setSummary(null);
           setCategories([]);
           setMembers([]);
@@ -72,9 +68,9 @@ export const DashboardScreen = ({ onOpenTransactions }: Props) => {
         }
 
         const [summaryData, categoryData, memberData] = await Promise.all([
-          dashboardService.getSummary(firstGroup.id, period.month, period.year),
-          dashboardService.getCategories(firstGroup.id, period.month, period.year),
-          dashboardService.getMembers(firstGroup.id, period.month, period.year),
+          dashboardService.getSummary(group.id, period.month, period.year),
+          dashboardService.getCategories(group.id, period.month, period.year),
+          dashboardService.getMembers(group.id, period.month, period.year),
         ]);
 
         setSummary(summaryData);
@@ -87,7 +83,7 @@ export const DashboardScreen = ({ onOpenTransactions }: Props) => {
         setIsRefreshing(false);
       }
     },
-    [loadGroups, period.month, period.year],
+    [activeGroup, fetchGroups, period.month, period.year],
   );
 
   useEffect(() => {
@@ -99,140 +95,73 @@ export const DashboardScreen = ({ onOpenTransactions }: Props) => {
   };
 
   if (isLoading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={colors.brand.primary} size="large" />
-          <Text style={styles.loadingText}>Carregando dashboard...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Carregando dashboard..." />;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            colors={[colors.brand.primary]}
-            onRefresh={handleRefresh}
-            refreshing={isRefreshing}
-            tintColor={colors.brand.primary}
-          />
-        }
-      >
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.brand}>Coflu</Text>
-            <Text style={styles.greeting}>{user?.name ? `Ola, ${user.name}` : 'Ola'}</Text>
-            <Text style={styles.groupName}>
-              {selectedGroup ? selectedGroup.name : 'Nenhum grupo financeiro'}
-            </Text>
-          </View>
-
-          <Pressable accessibilityRole="button" onPress={logout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Sair</Text>
-          </Pressable>
+    <Screen onRefresh={handleRefresh} refreshing={isRefreshing}>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.brand}>Coflu</Text>
+          <Text style={styles.greeting}>{user?.name ? `Ola, ${user.name}` : 'Ola'}</Text>
+          <Text style={styles.groupName}>
+            {activeGroup ? activeGroup.name : 'Nenhum grupo financeiro'}
+          </Text>
         </View>
+      </View>
 
-        <Text style={styles.period}>{getMonthLabel(period.month, period.year)}</Text>
+      <Text style={styles.period}>{getMonthLabel(period.month, period.year)}</Text>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpenTransactions}
-          style={styles.transactionsButton}
-        >
-          <Text style={styles.transactionsButtonText}>Ver transacoes</Text>
-        </Pressable>
+      <View style={styles.quickActions}>
+        <Button onPress={onCreateTransaction} title="Nova transacao" />
+        <Button onPress={onOpenTransactions} title="Ver transacoes" variant="secondary" />
+      </View>
 
-        {error ? (
-          <View style={styles.messageCard}>
-            <Text style={styles.messageTitle}>Nao foi possivel carregar</Text>
-            <Text style={styles.messageText}>{error}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => loadDashboard()}
-              style={styles.retryButton}
-            >
-              <Text style={styles.retryText}>Tentar novamente</Text>
-            </Pressable>
-          </View>
-        ) : null}
+      {error ? <ErrorState message={error} onRetry={() => loadDashboard()} /> : null}
 
-        {!selectedGroup && !error ? (
-          <View style={styles.messageCard}>
-            <Text style={styles.messageTitle}>Crie seu primeiro grupo</Text>
-            <Text style={styles.messageText}>
-              Assim que existir um grupo financeiro, seu dashboard aparecera aqui.
-            </Text>
-          </View>
-        ) : null}
+      {!activeGroup && !error ? (
+        <EmptyState
+          description="Assim que existir um grupo financeiro, seu dashboard aparecera aqui."
+          title="Crie seu primeiro grupo"
+        />
+      ) : null}
 
-        {selectedGroup && summary ? (
-          <>
-            <SummaryCard currency={currency} summary={summary} />
+      {activeGroup && summary ? (
+        <>
+          <SummaryCard currency={currency} summary={summary} />
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Gastos por categoria</Text>
-              <View style={styles.listCard}>
-                {categories.length ? (
-                  categories.map((category) => (
-                    <CategoryItem
-                      category={category}
-                      currency={currency}
-                      key={category.categoryId}
-                    />
-                  ))
-                ) : (
-                  <Text style={styles.emptyText}>Nenhuma despesa neste periodo.</Text>
-                )}
-              </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Gastos por categoria</Text>
+            <View style={styles.listCard}>
+              {categories.length ? (
+                categories.map((category) => (
+                  <CategoryItem category={category} currency={currency} key={category.categoryId} />
+                ))
+              ) : (
+                <Text style={styles.emptyText}>Nenhuma despesa neste periodo.</Text>
+              )}
             </View>
+          </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Gastos por membro</Text>
-              <View style={styles.listCard}>
-                {members.length ? (
-                  members.map((member) => (
-                    <MemberItem currency={currency} key={member.userId} member={member} />
-                  ))
-                ) : (
-                  <Text style={styles.emptyText}>Nenhum split registrado neste periodo.</Text>
-                )}
-              </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Gastos por membro</Text>
+            <View style={styles.listCard}>
+              {members.length ? (
+                members.map((member) => (
+                  <MemberItem currency={currency} key={member.userId} member={member} />
+                ))
+              ) : (
+                <Text style={styles.emptyText}>Nenhum split registrado neste periodo.</Text>
+              )}
             </View>
-          </>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+          </View>
+        </>
+      ) : null}
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background.light,
-  },
-  content: {
-    gap: 20,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 36,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-    backgroundColor: colors.background.light,
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    fontSize: 15,
-    letterSpacing: 0,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -264,23 +193,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     letterSpacing: 0,
   },
-  logoutButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 58,
-    minHeight: 38,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.neutral.light,
-    backgroundColor: colors.neutral.white,
-  },
-  logoutText: {
-    ...typography.button,
-    color: colors.brand.accent,
-    fontSize: 13,
-    letterSpacing: 0,
-  },
   period: {
     ...typography.body,
     color: colors.text.secondary,
@@ -288,18 +200,8 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     letterSpacing: 0,
   },
-  transactionsButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-    borderRadius: 16,
-    backgroundColor: colors.brand.accent,
-  },
-  transactionsButtonText: {
-    ...typography.button,
-    color: colors.text.inverted,
-    fontSize: 15,
-    letterSpacing: 0,
+  quickActions: {
+    gap: 10,
   },
   section: {
     gap: 10,
@@ -325,42 +227,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: 14,
     lineHeight: 20,
-    letterSpacing: 0,
-  },
-  messageCard: {
-    gap: 8,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.neutral.light,
-    borderRadius: 18,
-    backgroundColor: colors.neutral.white,
-  },
-  messageTitle: {
-    ...typography.title,
-    color: colors.text.primary,
-    fontSize: 17,
-    lineHeight: 23,
-    letterSpacing: 0,
-  },
-  messageText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    fontSize: 14,
-    lineHeight: 21,
-    letterSpacing: 0,
-  },
-  retryButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 42,
-    marginTop: 4,
-    borderRadius: 12,
-    backgroundColor: colors.brand.primary,
-  },
-  retryText: {
-    ...typography.button,
-    color: colors.text.inverted,
-    fontSize: 14,
     letterSpacing: 0,
   },
 });

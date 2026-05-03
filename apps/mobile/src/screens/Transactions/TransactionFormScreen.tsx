@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
+import { Input } from '../../components/Input';
+import { LoadingState } from '../../components/LoadingState';
+import { Screen } from '../../components/Screen';
 import { getApiErrorMessage } from '../../services/api';
 import { categoriesService, type Category } from '../../services/categories';
 import {
@@ -17,7 +13,8 @@ import {
   type Transaction,
   type TransactionType,
 } from '../../services/transactions';
-import { useGroupStore } from '../../store/group.store';
+import { useGroupsStore } from '../../store/groups.store';
+import { useTransactionsStore } from '../../store/transactions.store';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { toDateInputValue } from '../../utils/date';
@@ -38,7 +35,9 @@ const transactionTypes: Array<{ label: string; value: TransactionType }> = [
 const getInitialDate = () => toDateInputValue(new Date());
 
 export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: Props) => {
-  const selectedGroup = useGroupStore((state) => state.selectedGroup);
+  const activeGroup = useGroupsStore((state) => state.activeGroup);
+  const createTransaction = useTransactionsStore((state) => state.createTransaction);
+  const updateTransaction = useTransactionsStore((state) => state.updateTransaction);
   const [categories, setCategories] = useState<Category[]>([]);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [type, setType] = useState<TransactionType>('expense');
@@ -60,7 +59,8 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
   );
 
   const loadData = useCallback(async () => {
-    if (!selectedGroup) {
+    if (!activeGroup) {
+      setIsLoading(false);
       return;
     }
 
@@ -69,9 +69,9 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
 
     try {
       const [categoryData, transactionData] = await Promise.all([
-        categoriesService.listCategories(selectedGroup.id),
+        categoriesService.listCategories(activeGroup.id),
         mode === 'edit' && transactionId
-          ? transactionsService.getTransaction(selectedGroup.id, transactionId)
+          ? transactionsService.getTransaction(activeGroup.id, transactionId)
           : Promise.resolve(null),
       ]);
 
@@ -94,7 +94,7 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
     } finally {
       setIsLoading(false);
     }
-  }, [mode, selectedGroup, transactionId]);
+  }, [activeGroup, mode, transactionId]);
 
   useEffect(() => {
     loadData();
@@ -109,7 +109,7 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
   const validate = () => {
     const parsedAmount = Number(amount.replace(',', '.'));
 
-    if (!selectedGroup) {
+    if (!activeGroup) {
       return 'Nenhum grupo selecionado.';
     }
 
@@ -135,7 +135,7 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
   const handleSave = async () => {
     const validationError = validate();
 
-    if (validationError || !selectedGroup) {
+    if (validationError || !activeGroup) {
       setError(validationError);
       return;
     }
@@ -147,14 +147,14 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
 
     try {
       if (mode === 'edit' && transactionId) {
-        await transactionsService.updateTransaction(selectedGroup.id, transactionId, {
+        await updateTransaction(activeGroup.id, transactionId, {
           amount: parsedAmount,
           categoryId,
           description: description.trim(),
           date,
         });
       } else {
-        await transactionsService.createTransaction(selectedGroup.id, {
+        await createTransaction(activeGroup.id, {
           type,
           amount: parsedAmount,
           categoryId,
@@ -173,63 +173,63 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
   };
 
   if (isLoading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={colors.brand.primary} size="large" />
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Carregando transacao..." />;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable accessibilityRole="button" onPress={onBack}>
-          <Text style={styles.backText}>Voltar</Text>
-        </Pressable>
+    <Screen>
+      <Pressable accessibilityRole="button" onPress={onBack}>
+        <Text style={styles.backText}>Voltar</Text>
+      </Pressable>
 
-        <Text style={styles.title}>{mode === 'edit' ? 'Editar transacao' : 'Nova transacao'}</Text>
+      <Text style={styles.title}>{mode === 'edit' ? 'Editar transacao' : 'Nova transacao'}</Text>
 
-        <View style={styles.segment}>
-          {transactionTypes.map((item) => (
-            <Pressable
-              accessibilityRole="button"
-              disabled={mode === 'edit'}
-              key={item.value}
-              onPress={() => setType(item.value)}
-              style={[styles.segmentButton, type === item.value && styles.segmentButtonActive]}
-            >
-              <Text style={[styles.segmentText, type === item.value && styles.segmentTextActive]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <View style={styles.segment}>
+        {transactionTypes.map((item) => (
+          <Pressable
+            accessibilityRole="button"
+            disabled={mode === 'edit'}
+            key={item.value}
+            onPress={() => setType(item.value)}
+            style={[styles.segmentButton, type === item.value && styles.segmentButtonActive]}
+          >
+            <Text style={[styles.segmentText, type === item.value && styles.segmentTextActive]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
-        <View style={styles.form}>
-          <TextInput
+      {!activeGroup ? (
+        <EmptyState
+          description="Selecione ou crie um grupo antes de registrar uma movimentacao."
+          title="Nenhum grupo ativo"
+        />
+      ) : null}
+
+      {activeGroup ? (
+        <Card style={styles.form}>
+          <Input
+            label="Valor"
             keyboardType="decimal-pad"
             onChangeText={setAmount}
             placeholder="Valor"
-            placeholderTextColor={colors.text.secondary}
-            style={styles.input}
             value={amount}
           />
-          <TextInput
+          <Input
+            label="Descricao"
             onChangeText={setDescription}
             placeholder="Descricao"
-            placeholderTextColor={colors.text.secondary}
-            style={styles.input}
             value={description}
           />
-          <TextInput
-            onChangeText={setDate}
-            placeholder="AAAA-MM-DD"
-            placeholderTextColor={colors.text.secondary}
-            style={styles.input}
-            value={date}
-          />
+          <Input label="Data" onChangeText={setDate} placeholder="AAAA-MM-DD" value={date} />
+
+          {!filteredCategories.length ? (
+            <EmptyState
+              description="Nenhuma categoria disponivel. Crie categorias padrao no backend ou aguarde o proximo passo."
+              title="Sem categorias"
+            />
+          ) : null}
 
           <View style={styles.categoryGrid}>
             {filteredCategories.map((category) => (
@@ -288,28 +288,13 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
               <Text style={styles.saveButtonText}>Salvar</Text>
             )}
           </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </Card>
+      ) : null}
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background.light,
-  },
-  content: {
-    gap: 18,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 36,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   backText: {
     ...typography.button,
     color: colors.brand.accent,
@@ -352,17 +337,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 14,
-  },
-  input: {
-    minHeight: 54,
-    borderWidth: 1,
-    borderColor: colors.neutral.light,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    color: colors.text.primary,
-    backgroundColor: colors.neutral.white,
-    fontSize: 16,
-    letterSpacing: 0,
   },
   categoryGrid: {
     flexDirection: 'row',

@@ -35,6 +35,11 @@ export const LoginScreen = ({ onNavigateToRegister }: Props) => {
       return;
     }
 
+    if (!email.includes('@')) {
+      setError('Informe um email valido.');
+      return;
+    }
+
     try {
       await login({
         email: email.trim().toLowerCase(),
