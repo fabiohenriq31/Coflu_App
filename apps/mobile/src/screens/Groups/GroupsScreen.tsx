@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
+import { Badge } from '../../components/Badge';
 import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
@@ -95,9 +96,10 @@ export const GroupsScreen = ({ onCreateGroup, onOpenGroup }: Props) => {
                       {roleLabel[group.membership.role]} • {group.defaultCurrency}
                     </Text>
                   </View>
-                  <Text style={[styles.status, isActive && styles.activeStatus]}>
-                    {isActive ? 'Ativo' : 'Selecionar'}
-                  </Text>
+                  <Badge
+                    label={isActive ? 'Ativo' : 'Selecionar'}
+                    tone={isActive ? 'success' : 'info'}
+                  />
                 </View>
                 <Button
                   onPress={() => onOpenGroup(group.id)}

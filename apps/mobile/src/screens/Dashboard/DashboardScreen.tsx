@@ -2,13 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CategoryItem } from '../../components/CategoryItem';
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
-import { Screen } from '../../components/Screen';
 import { MemberItem } from '../../components/MemberItem';
+import { QuickAction } from '../../components/QuickAction';
+import { Screen } from '../../components/Screen';
+import { SectionHeader } from '../../components/SectionHeader';
 import { SummaryCard } from '../../components/SummaryCard';
+import { TransactionListItem } from '../../components/TransactionListItem';
 import { getApiErrorMessage } from '../../services/api';
 import {
   dashboardService,
@@ -16,6 +21,7 @@ import {
   type DashboardMember,
   type DashboardSummary,
 } from '../../services/dashboard';
+import { transactionsService, type Transaction } from '../../services/transactions';
 import { useAuthStore } from '../../store/auth.store';
 import { useGroupsStore } from '../../store/groups.store';
 import { colors } from '../../theme/colors';
@@ -31,14 +37,22 @@ const getMonthLabel = (month: number, year: number) =>
 type Props = {
   onOpenTransactions: () => void;
   onCreateTransaction: () => void;
+  onOpenGoals: () => void;
+  onOpenTransaction: (transactionId: string) => void;
 };
 
-export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Props) => {
+export const DashboardScreen = ({
+  onCreateTransaction,
+  onOpenGoals,
+  onOpenTransaction,
+  onOpenTransactions,
+}: Props) => {
   const user = useAuthStore((state) => state.user);
   const activeGroup = useGroupsStore((state) => state.activeGroup);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [categories, setCategories] = useState<DashboardCategory[]>([]);
   const [members, setMembers] = useState<DashboardMember[]>([]);
+  const [latestTransactions, setLatestTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -69,10 +83,15 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
           dashboardService.getCategories(activeGroupId, period.month, period.year),
           dashboardService.getMembers(activeGroupId, period.month, period.year),
         ]);
+        const transactionData = await transactionsService.listTransactions(activeGroupId, {
+          month: period.month,
+          year: period.year,
+        });
 
         setSummary(summaryData);
         setCategories(categoryData);
         setMembers(memberData);
+        setLatestTransactions(transactionData.slice(0, 4));
       } catch (requestError) {
         setError(getApiErrorMessage(requestError));
       } finally {
@@ -105,14 +124,10 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
             {activeGroup ? activeGroup.name : 'Nenhum grupo financeiro'}
           </Text>
         </View>
+        <Avatar name={user?.name} />
       </View>
 
       <Text style={styles.period}>{getMonthLabel(period.month, period.year)}</Text>
-
-      <View style={styles.quickActions}>
-        <Button onPress={onCreateTransaction} title="Nova transacao" />
-        <Button onPress={onOpenTransactions} title="Ver transacoes" variant="secondary" />
-      </View>
 
       {error ? <ErrorState message={error} onRetry={() => loadDashboard()} /> : null}
 
@@ -127,8 +142,25 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
         <>
           <SummaryCard currency={currency} summary={summary} />
 
+          <View style={styles.quickGrid}>
+            <QuickAction
+              icon="-"
+              label="Adicionar gasto"
+              onPress={onCreateTransaction}
+              tone="danger"
+            />
+            <QuickAction
+              icon="+"
+              label="Adicionar receita"
+              onPress={onCreateTransaction}
+              tone="accent"
+            />
+            <QuickAction icon="*" label="Criar meta" onPress={onOpenGoals} tone="primary" />
+            <QuickAction icon="%" label="Relatorios" onPress={onOpenGoals} tone="warning" />
+          </View>
+
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Gastos por categoria</Text>
+            <SectionHeader title="Gastos por categoria" />
             <View style={styles.listCard}>
               {categories.length ? (
                 categories.map((category) => (
@@ -141,7 +173,7 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Gastos por membro</Text>
+            <SectionHeader title="Gastos por membro" />
             <View style={styles.listCard}>
               {members.length ? (
                 members.map((member) => (
@@ -151,6 +183,31 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
                 <Text style={styles.emptyText}>Nenhum split registrado neste periodo.</Text>
               )}
             </View>
+          </View>
+
+          <View style={styles.section}>
+            <SectionHeader
+              actionLabel="Ver todas"
+              onAction={onOpenTransactions}
+              title="Ultimos lancamentos"
+            />
+            {latestTransactions.length ? (
+              <View style={styles.transactionList}>
+                {latestTransactions.map((transaction) => (
+                  <TransactionListItem
+                    currency={currency}
+                    key={transaction.id}
+                    onPress={() => onOpenTransaction(transaction.id)}
+                    transaction={transaction}
+                  />
+                ))}
+              </View>
+            ) : (
+              <Card>
+                <Text style={styles.emptyText}>Nenhuma transacao registrada neste periodo.</Text>
+                <Button onPress={onCreateTransaction} title="Registrar primeira transacao" />
+              </Card>
+            )}
           </View>
         </>
       ) : null}
@@ -200,6 +257,10 @@ const styles = StyleSheet.create({
   quickActions: {
     gap: 10,
   },
+  quickGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   section: {
     gap: 10,
   },
@@ -217,6 +278,9 @@ const styles = StyleSheet.create({
     borderColor: colors.neutral.light,
     borderRadius: 18,
     backgroundColor: colors.neutral.white,
+  },
+  transactionList: {
+    gap: 10,
   },
   emptyText: {
     ...typography.body,

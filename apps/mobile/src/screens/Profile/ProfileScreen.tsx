@@ -1,7 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '../../components/Button';
+import { Avatar } from '../../components/Avatar';
+import { Badge } from '../../components/Badge';
 import { Card } from '../../components/Card';
+import { ListItem } from '../../components/ListItem';
 import { Screen } from '../../components/Screen';
 import { useAuthStore } from '../../store/auth.store';
 import { useGroupsStore } from '../../store/groups.store';
@@ -33,16 +36,22 @@ export const ProfileScreen = ({ onOpenSettings }: Props) => {
       </View>
 
       <Card>
-        <Text style={styles.name}>{user?.name ?? 'Usuario Coflu'}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
-        <View style={styles.row}>
-          <Text style={styles.label}>Moeda</Text>
-          <Text style={styles.value}>{user?.defaultCurrency ?? 'BRL'}</Text>
+        <View style={styles.profileHeader}>
+          <Avatar name={user?.name} size={58} />
+          <View style={styles.profileText}>
+            <Text style={styles.name}>{user?.name ?? 'Usuario Coflu'}</Text>
+            <Text style={styles.email}>{user?.email}</Text>
+          </View>
+          <Badge label="Conta ativa" tone="success" />
         </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Tema</Text>
-          <Text style={styles.value}>{user?.theme ?? 'system'}</Text>
-        </View>
+
+        <ListItem right={user?.defaultCurrency ?? 'BRL'} title="Moeda padrao" />
+        <ListItem right={user?.theme ?? 'system'} title="Tema atual" />
+      </Card>
+
+      <Card>
+        <ListItem right="Em breve" subtitle="Nome, avatar e telefone." title="Editar perfil" />
+        <ListItem right="Ativo" subtitle="Alertas de grupo e transacoes." title="Notificacoes" />
       </Card>
 
       <Button onPress={onOpenSettings} title="Configuracoes" variant="secondary" />
@@ -82,22 +91,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0,
   },
-  row: {
+  profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 12,
   },
-  label: {
-    ...typography.body,
-    color: colors.text.secondary,
-    fontSize: 14,
-    letterSpacing: 0,
-  },
-  value: {
-    ...typography.button,
-    color: colors.text.primary,
-    fontSize: 14,
-    letterSpacing: 0,
+  profileText: {
+    flex: 1,
+    gap: 3,
   },
 });

@@ -24,16 +24,33 @@ type Props = {
 export const TransactionsScreen = ({ onBack, onCreate, onOpenTransaction }: Props) => {
   const user = useAuthStore((state) => state.user);
   const activeGroup = useGroupsStore((state) => state.activeGroup);
-  const fetchGroups = useGroupsStore((state) => state.fetchGroups);
   const transactions = useTransactionsStore((state) => state.transactions);
   const fetchTransactions = useTransactionsStore((state) => state.fetchTransactions);
   const isLoadingTransactions = useTransactionsStore((state) => state.isLoadingTransactions);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [selectedType, setSelectedType] = useState<'all' | 'expense' | 'income'>('all');
   const period = useMemo(() => getCurrentPeriod(), []);
 
   const currency = activeGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
+  const visibleTransactions = useMemo(
+    () =>
+      selectedType === 'all'
+        ? transactions
+        : transactions.filter((transaction) => transaction.type === selectedType),
+    [selectedType, transactions],
+  );
+  const groupedTransactions = useMemo(() => {
+    const groups = new Map<string, typeof visibleTransactions>();
+
+    visibleTransactions.forEach((transaction) => {
+      const key = transaction.date.slice(0, 10);
+      groups.set(key, [...(groups.get(key) ?? []), transaction]);
+    });
+
+    return Array.from(groups.entries());
+  }, [visibleTransactions]);
 
   const loadTransactions = useCallback(
     async (refreshing = false) => {
@@ -45,13 +62,11 @@ export const TransactionsScreen = ({ onBack, onCreate, onOpenTransaction }: Prop
       }
 
       try {
-        const group = activeGroup ?? (await fetchGroups())[0];
-
-        if (!group) {
+        if (!activeGroup) {
           return;
         }
 
-        await fetchTransactions(group.id, {
+        await fetchTransactions(activeGroup.id, {
           month: period.month,
           year: period.year,
         });
@@ -62,7 +77,7 @@ export const TransactionsScreen = ({ onBack, onCreate, onOpenTransaction }: Prop
         setIsRefreshing(false);
       }
     },
-    [activeGroup, fetchGroups, fetchTransactions, period.month, period.year],
+    [activeGroup, fetchTransactions, period.month, period.year],
   );
 
   useEffect(() => {
@@ -104,14 +119,50 @@ export const TransactionsScreen = ({ onBack, onCreate, onOpenTransaction }: Prop
         />
       ) : null}
 
+      {activeGroup && transactions.length ? (
+        <View style={styles.filters}>
+          {[
+            { label: 'Todas', value: 'all' as const },
+            { label: 'Despesas', value: 'expense' as const },
+            { label: 'Receitas', value: 'income' as const },
+          ].map((filter) => (
+            <Pressable
+              accessibilityRole="button"
+              key={filter.value}
+              onPress={() => setSelectedType(filter.value)}
+              style={[
+                styles.filterButton,
+                selectedType === filter.value && styles.filterButtonActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  selectedType === filter.value && styles.filterTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       <View style={styles.list}>
-        {transactions.map((transaction) => (
-          <TransactionListItem
-            currency={currency}
-            key={transaction.id}
-            onPress={() => onOpenTransaction(transaction.id)}
-            transaction={transaction}
-          />
+        {groupedTransactions.map(([date, items]) => (
+          <View key={date} style={styles.dateGroup}>
+            <Text style={styles.dateLabel}>
+              {new Intl.DateTimeFormat('pt-BR').format(new Date(date))}
+            </Text>
+            {items.map((transaction) => (
+              <TransactionListItem
+                currency={currency}
+                key={transaction.id}
+                onPress={() => onOpenTransaction(transaction.id)}
+                transaction={transaction}
+              />
+            ))}
+          </View>
         ))}
       </View>
     </Screen>
@@ -147,5 +198,41 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
+  },
+  filters: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 42,
+    borderWidth: 1,
+    borderColor: colors.neutral.light,
+    borderRadius: 14,
+    backgroundColor: colors.neutral.white,
+  },
+  filterButtonActive: {
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.primary,
+  },
+  filterText: {
+    ...typography.button,
+    color: colors.text.secondary,
+    fontSize: 13,
+    letterSpacing: 0,
+  },
+  filterTextActive: {
+    color: colors.text.inverted,
+  },
+  dateGroup: {
+    gap: 8,
+  },
+  dateLabel: {
+    ...typography.button,
+    color: colors.text.secondary,
+    fontSize: 12,
+    letterSpacing: 0,
   },
 });

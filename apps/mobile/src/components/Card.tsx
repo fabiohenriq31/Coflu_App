@@ -2,6 +2,9 @@ import { type ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { radius } from '../theme/radius';
+import { shadows } from '../theme/shadows';
+import { spacing } from '../theme/spacing';
 
 type Props = {
   children: ReactNode;
@@ -15,15 +18,11 @@ export const Card = ({ children, style }: Props) => (
 const styles = StyleSheet.create({
   card: {
     gap: 12,
-    padding: 18,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.neutral.light,
-    borderRadius: 18,
+    borderRadius: radius.lg,
     backgroundColor: colors.neutral.white,
-    shadowColor: colors.neutral.dark,
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
+    ...shadows.sm,
   },
 });

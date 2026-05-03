@@ -213,7 +213,8 @@ export const TransactionFormScreen = ({ mode, onBack, onSaved, transactionId }: 
             label="Valor"
             keyboardType="decimal-pad"
             onChangeText={setAmount}
-            placeholder="Valor"
+            placeholder="0,00"
+            style={styles.amountInput}
             value={amount}
           />
           <Input
@@ -337,6 +338,11 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 14,
+  },
+  amountInput: {
+    minHeight: 68,
+    fontSize: 28,
+    fontWeight: '700',
   },
   categoryGrid: {
     flexDirection: 'row',

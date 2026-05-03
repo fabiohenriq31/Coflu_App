@@ -1,6 +1,8 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { radius } from '../theme/radius';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 
 type Props = {
@@ -8,7 +10,7 @@ type Props = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'neutral';
 };
 
 export const Button = ({
@@ -31,7 +33,15 @@ export const Button = ({
     {loading ? (
       <ActivityIndicator color={variant === 'ghost' ? colors.brand.accent : colors.text.inverted} />
     ) : (
-      <Text style={[styles.text, variant === 'ghost' && styles.ghostText]}>{title}</Text>
+      <Text
+        style={[
+          styles.text,
+          variant === 'ghost' && styles.ghostText,
+          variant === 'neutral' && styles.neutralText,
+        ]}
+      >
+        {title}
+      </Text>
     )}
   </Pressable>
 );
@@ -41,8 +51,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 54,
-    borderRadius: 16,
-    paddingHorizontal: 16,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
   },
   primary: {
     backgroundColor: colors.brand.primary,
@@ -56,6 +66,11 @@ const styles = StyleSheet.create({
   ghost: {
     backgroundColor: 'transparent',
   },
+  neutral: {
+    borderWidth: 1,
+    borderColor: colors.neutral.light,
+    backgroundColor: colors.neutral.white,
+  },
   text: {
     ...typography.button,
     color: colors.text.inverted,
@@ -64,6 +79,9 @@ const styles = StyleSheet.create({
   },
   ghostText: {
     color: colors.brand.accent,
+  },
+  neutralText: {
+    color: colors.text.primary,
   },
   pressed: {
     opacity: 0.82,

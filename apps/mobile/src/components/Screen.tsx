@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { RefreshControl, SafeAreaView, ScrollView, StyleSheet, type ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
 
 type Props = {
   children: ReactNode;
@@ -38,8 +39,8 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 18,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 36,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
 });

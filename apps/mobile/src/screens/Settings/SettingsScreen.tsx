@@ -1,12 +1,19 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../../components/Card';
+import { Badge } from '../../components/Badge';
+import { ListItem } from '../../components/ListItem';
 import { Screen } from '../../components/Screen';
 import { useGroupsStore } from '../../store/groups.store';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 
-const integrations = ['WhatsApp', 'IA', 'Apple Shortcuts', 'Open Finance'];
+const integrations = [
+  { name: 'WhatsApp', status: 'Em breve' },
+  { name: 'Coflu IA', status: 'Em breve' },
+  { name: 'Apple Shortcuts/Wallet', status: 'Em breve' },
+  { name: 'Open Finance', status: 'Planejado' },
+];
 
 type Props = {
   onBack: () => void;
@@ -35,11 +42,36 @@ export const SettingsScreen = ({ onBack }: Props) => {
       </Card>
 
       <Card>
+        <Text style={styles.sectionTitle}>Conta e preferencias</Text>
+        <ListItem right="BRL" subtitle="Padrao para novos grupos." title="Moeda" />
+        <ListItem right="Sistema" subtitle="Claro, escuro ou automatico." title="Aparencia" />
+        <ListItem right="Ativas" subtitle="Resumo, convites e alertas." title="Notificacoes" />
+        <ListItem right="Padrao" subtitle="Privacidade por transacao." title="Privacidade" />
+      </Card>
+
+      <Card>
+        <Text style={styles.sectionTitle}>Dados e seguranca</Text>
+        <ListItem
+          right="Em breve"
+          subtitle="CSV/PDF das suas movimentacoes."
+          title="Exportar dados"
+        />
+        <ListItem
+          right="Protegido"
+          subtitle="Confirmacao obrigatoria antes de apagar."
+          title="Excluir conta"
+        />
+      </Card>
+
+      <Card>
         <Text style={styles.sectionTitle}>Integracoes</Text>
         {integrations.map((integration) => (
-          <View key={integration} style={styles.integrationRow}>
-            <Text style={styles.integrationName}>{integration}</Text>
-            <Text style={styles.badge}>Em breve</Text>
+          <View key={integration.name} style={styles.integrationRow}>
+            <Text style={styles.integrationName}>{integration.name}</Text>
+            <Badge
+              label={integration.status}
+              tone={integration.status === 'Planejado' ? 'warning' : 'info'}
+            />
           </View>
         ))}
       </Card>
@@ -102,12 +134,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text.primary,
     fontSize: 15,
-    letterSpacing: 0,
-  },
-  badge: {
-    ...typography.button,
-    color: colors.brand.accent,
-    fontSize: 12,
     letterSpacing: 0,
   },
 });

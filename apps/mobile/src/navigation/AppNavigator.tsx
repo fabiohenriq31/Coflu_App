@@ -6,6 +6,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LoginScreen } from '../screens/Auth/LoginScreen';
 import { RegisterScreen } from '../screens/Auth/RegisterScreen';
 import { DashboardScreen } from '../screens/Dashboard/DashboardScreen';
+import { GoalsScreen } from '../screens/Goals/GoalsScreen';
+import { BudgetsScreen } from '../screens/Goals/BudgetsScreen';
 import { CreateGroupScreen } from '../screens/Groups/CreateGroupScreen';
 import { GroupDetailsScreen } from '../screens/Groups/GroupDetailsScreen';
 import { GroupsScreen } from '../screens/Groups/GroupsScreen';
@@ -34,6 +36,8 @@ export type AppStackParamList = {
   Dashboard: undefined;
   Transactions: undefined;
   Groups: undefined;
+  Goals: undefined;
+  Budgets: undefined;
   Profile: undefined;
   Settings: undefined;
   GroupDetails: { groupId: string };
@@ -44,11 +48,13 @@ export type AppStackParamList = {
 };
 
 type AuthRoute = keyof AuthStackParamList;
-type MainTab = 'Dashboard' | 'Transactions' | 'Groups' | 'Profile';
+type MainTab = 'Dashboard' | 'Transactions' | 'Goals' | 'Groups' | 'Profile';
 type AppRoute =
   | { name: 'CreateGroup'; from?: MainTab }
   | { name: 'Dashboard' }
   | { name: 'Transactions' }
+  | { name: 'Goals' }
+  | { name: 'Budgets' }
   | { name: 'Groups' }
   | { name: 'Profile' }
   | { name: 'Settings' }
@@ -71,6 +77,7 @@ const AuthNavigator = () => {
 const tabs: Array<{ label: string; route: MainTab }> = [
   { label: 'Inicio', route: 'Dashboard' },
   { label: 'Transacoes', route: 'Transactions' },
+  { label: 'Metas', route: 'Goals' },
   { label: 'Grupos', route: 'Groups' },
   { label: 'Perfil', route: 'Profile' },
 ];
@@ -83,6 +90,10 @@ const getActiveTab = (route: AppRoute): MainTab => {
     route.name === 'EditTransaction'
   ) {
     return 'Transactions';
+  }
+
+  if (route.name === 'Goals' || route.name === 'Budgets') {
+    return 'Goals';
   }
 
   if (route.name === 'Groups' || route.name === 'GroupDetails' || route.name === 'InviteMember') {
@@ -214,6 +225,14 @@ const MainNavigator = () => {
       );
     }
 
+    if (route.name === 'Goals') {
+      return <GoalsScreen onOpenBudgets={() => setRoute({ name: 'Budgets' })} />;
+    }
+
+    if (route.name === 'Budgets') {
+      return <BudgetsScreen onBack={() => setRoute({ name: 'Goals' })} />;
+    }
+
     if (route.name === 'Profile') {
       return <ProfileScreen onOpenSettings={() => setRoute({ name: 'Settings' })} />;
     }
@@ -281,6 +300,10 @@ const MainNavigator = () => {
     return (
       <DashboardScreen
         onCreateTransaction={() => setRoute({ name: 'NewTransaction' })}
+        onOpenGoals={() => setRoute({ name: 'Goals' })}
+        onOpenTransaction={(transactionId) =>
+          setRoute({ name: 'TransactionDetails', transactionId })
+        }
         onOpenTransactions={() => setRoute({ name: 'Transactions' })}
       />
     );

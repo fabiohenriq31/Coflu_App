@@ -23,12 +23,23 @@ export const TransactionListItem = ({ currency, onPress, transaction }: Props) =
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
+      <View
+        style={[
+          styles.iconBubble,
+          { backgroundColor: transaction.category?.color ?? colors.neutral.softer },
+        ]}
+      >
+        <Text style={styles.iconText}>
+          {transaction.category?.icon ? transaction.category.icon.slice(0, 1).toUpperCase() : '$'}
+        </Text>
+      </View>
+
       <View style={styles.info}>
         <Text numberOfLines={1} style={styles.description}>
           {transaction.description || 'Sem descricao'}
         </Text>
         <Text style={styles.meta}>
-          {transaction.category?.name ?? 'Sem categoria'} • {formatShortDate(transaction.date)}
+          {transaction.category?.name ?? 'Sem categoria'} - {formatShortDate(transaction.date)}
         </Text>
       </View>
 
@@ -54,6 +65,19 @@ const styles = StyleSheet.create({
     borderColor: colors.neutral.light,
     borderRadius: 16,
     backgroundColor: colors.neutral.white,
+  },
+  iconBubble: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
+  iconText: {
+    ...typography.button,
+    color: colors.text.inverted,
+    fontSize: 14,
+    letterSpacing: 0,
   },
   info: {
     flex: 1,
