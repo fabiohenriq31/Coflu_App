@@ -174,3 +174,109 @@ Regras:
 - `admin`: edita grupo e convida/remove membros comuns.
 - `member`: base para criar dados financeiros futuramente.
 - `viewer`: apenas visualiza.
+
+## Rotas de transacoes
+
+Todas as rotas de transacoes ficam dentro de um grupo financeiro e exigem autenticacao:
+
+```http
+Authorization: Bearer seu_access_token
+```
+
+### POST /groups/:groupId/transactions
+
+Cria receita, despesa ou transferencia. O usuario precisa ser membro ativo do grupo.
+
+```json
+{
+  "type": "expense",
+  "amount": 120.5,
+  "categoryId": "uuid-da-categoria",
+  "paymentMethodId": "uuid-do-metodo-opcional",
+  "description": "Mercado",
+  "date": "2026-05-03",
+  "isPrivate": false,
+  "splits": [
+    {
+      "userId": "uuid-do-usuario-1",
+      "amount": 60.25
+    },
+    {
+      "userId": "uuid-do-usuario-2",
+      "amount": 60.25
+    }
+  ]
+}
+```
+
+Tipos permitidos: `income`, `expense`, `transfer`.
+
+### Splits
+
+Se `splits` nao for enviado, a transacao pertence 100% ao criador.
+
+Se `splits` for enviado:
+
+- A soma dos valores deve ser igual a `amount`.
+- Cada usuario pode aparecer apenas uma vez.
+- Todos os usuarios precisam ser membros ativos do grupo.
+- A API calcula o percentual de cada divisao.
+
+Ao editar `amount` sem enviar novos `splits`, a API rebalanceia os splits existentes proporcionalmente para manter a transacao consistente.
+
+### GET /groups/:groupId/transactions
+
+Lista transacoes visiveis do grupo, ordenadas por `date DESC`.
+
+Filtros opcionais:
+
+```txt
+month=5
+year=2026
+type=expense
+userId=uuid-do-usuario
+```
+
+Se `month` for informado, `year` tambem e obrigatorio.
+
+Transacoes privadas (`isPrivate=true`) so aparecem para o criador.
+
+### GET /groups/:groupId/transactions/:transactionId
+
+Retorna a transacao com:
+
+- dados principais
+- splits
+- categoria
+- criador
+
+Transacoes privadas de outro usuario retornam erro seguro.
+
+### PATCH /groups/:groupId/transactions/:transactionId
+
+Permite editar `amount`, `categoryId`, `paymentMethodId`, `description`, `date` e `splits`.
+
+Apenas o criador ou `owner/admin` podem editar. `viewer` nao gerencia transacoes.
+
+```json
+{
+  "amount": 150,
+  "description": "Mercado atualizado",
+  "splits": [
+    {
+      "userId": "uuid-do-usuario-1",
+      "amount": 75
+    },
+    {
+      "userId": "uuid-do-usuario-2",
+      "amount": 75
+    }
+  ]
+}
+```
+
+### DELETE /groups/:groupId/transactions/:transactionId
+
+Exclui fisicamente a transacao nesta primeira versao. Apenas criador ou `owner/admin`.
+
+Soft delete deve ser adicionado depois que auditoria e regras de retencao financeira estiverem fechadas.

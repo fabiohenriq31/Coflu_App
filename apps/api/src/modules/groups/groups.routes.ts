@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { authenticate } from '../../middlewares/authenticate.js';
+import { transactionsRoutes } from '../transactions/transactions.routes.js';
 import {
   createGroup,
   deleteGroup,
@@ -19,6 +20,9 @@ groupsRoutes.use(authenticate);
 
 groupsRoutes.post('/', createGroup);
 groupsRoutes.get('/', listGroups);
+
+groupsRoutes.use('/:groupId/transactions', transactionsRoutes);
+
 groupsRoutes.get('/:groupId', getGroup);
 groupsRoutes.patch('/:groupId', updateGroup);
 groupsRoutes.delete('/:groupId', deleteGroup);
