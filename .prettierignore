@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.expo/
+web-build/
+package-lock.json
+.dev-server*.log
+.mobile-server*.log

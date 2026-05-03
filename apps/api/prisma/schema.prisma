@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GroupType {
+  COUPLE  @map("couple")
+  FAMILY  @map("family")
+  FRIENDS @map("friends")
+  OTHER   @map("other")
+
+  @@map("group_type")
+}
+
+enum MemberRole {
+  OWNER  @map("owner")
+  ADMIN  @map("admin")
+  MEMBER @map("member")
+  VIEWER @map("viewer")
+
+  @@map("member_role")
+}
+
+enum MemberStatus {
+  INVITED @map("invited")
+  ACTIVE  @map("active")
+  REMOVED @map("removed")
+
+  @@map("member_status")
+}
+
+enum TransactionType {
+  INCOME   @map("income")
+  EXPENSE  @map("expense")
+  TRANSFER @map("transfer")
+
+  @@map("transaction_type")
+}
+
+enum TransactionStatus {
+  PENDING   @map("pending")
+  CONFIRMED @map("confirmed")
+  CANCELLED @map("cancelled")
+
+  @@map("transaction_status")
+}
+
+enum TransactionSource {
+  MANUAL       @map("manual")
+  WHATSAPP     @map("whatsapp")
+  SHORTCUT     @map("shortcut")
+  OPEN_FINANCE @map("open_finance")
+
+  @@map("transaction_source")
+}
+
+enum PaymentMethodType {
+  CARD  @map("card")
+  CASH  @map("cash")
+  PIX   @map("pix")
+  BANK  @map("bank")
+  OTHER @map("other")
+
+  @@map("payment_method_type")
+}
+
+enum CategoryType {
+  INCOME  @map("income")
+  EXPENSE @map("expense")
+
+  @@map("category_type")
+}
+
+enum IntegrationProvider {
+  WHATSAPP        @map("whatsapp")
+  APPLE_SHORTCUTS @map("apple_shortcuts")
+  OPEN_FINANCE    @map("open_finance")
+
+  @@map("integration_provider")
+}
+
+enum ThemeMode {
+  LIGHT  @map("light")
+  DARK   @map("dark")
+  SYSTEM @map("system")
+
+  @@map("theme_mode")
+}
+
+enum SplitStatus {
+  PENDING   @map("pending")
+  CONFIRMED @map("confirmed")
+  CANCELLED @map("cancelled")
+
+  @@map("split_status")
+}
+
+enum GoalStatus {
+  ACTIVE    @map("active")
+  COMPLETED @map("completed")
+  PAUSED    @map("paused")
+  CANCELLED @map("cancelled")
+
+  @@map("goal_status")
+}
+
+enum IntegrationStatus {
+  ACTIVE  @map("active")
+  PENDING @map("pending")
+  REVOKED @map("revoked")
+  ERROR   @map("error")
+
+  @@map("integration_status")
+}
+
+enum NotificationType {
+  INFO              @map("info")
+  INVITE            @map("invite")
+  BUDGET_ALERT      @map("budget_alert")
+  GOAL_UPDATE       @map("goal_update")
+  TRANSACTION_ALERT @map("transaction_alert")
+  INTEGRATION_ALERT @map("integration_alert")
+
+  @@map("notification_type")
+}
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String
+  email           String    @unique
+  passwordHash    String?   @map("password_hash")
+  phone           String?
+  avatarUrl       String?   @map("avatar_url")
+  defaultCurrency String    @default("BRL") @map("default_currency") @db.VarChar(3)
+  theme           ThemeMode @default(SYSTEM)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  ownedGroups       FinancialGroup[]   @relation("FinancialGroupOwner")
+  memberships       GroupMember[]
+  paymentMethods    PaymentMethod[]
+  transactions      Transaction[]
+  transactionSplits TransactionSplit[]
+  createdGoals      Goal[]             @relation("GoalCreator")
+  integrations      Integration[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model FinancialGroup {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String
+  type            GroupType
+  ownerUserId     String    @map("owner_user_id") @db.Uuid
+  defaultCurrency String    @default("BRL") @map("default_currency") @db.VarChar(3)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  owner          User            @relation("FinancialGroupOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  members        GroupMember[]
+  categories     Category[]
+  paymentMethods PaymentMethod[]
+  transactions   Transaction[]
+  goals          Goal[]
+  budgets        Budget[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+
+  @@index([ownerUserId])
+  @@map("financial_groups")
+}
+
+model GroupMember {
+  id        String       @id @default(uuid()) @db.Uuid
+  groupId   String       @map("group_id") @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  role      MemberRole   @default(MEMBER)
+  status    MemberStatus @default(INVITED)
+  joinedAt  DateTime?    @map("joined_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  group FinancialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@index([status])
+  @@map("group_members")
+}
+
+model Category {
+  id        String       @id @default(uuid()) @db.Uuid
+  groupId   String?      @map("group_id") @db.Uuid
+  name      String
+  type      CategoryType
+  icon      String?
+  color     String?      @db.VarChar(16)
+  isDefault Boolean      @default(false) @map("is_default")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  group        FinancialGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([groupId, name, type])
+  @@index([groupId])
+  @@index([type])
+  @@map("categories")
+}
+
+model PaymentMethod {
+  id         String            @id @default(uuid()) @db.Uuid
+  groupId    String            @map("group_id") @db.Uuid
+  userId     String?           @map("user_id") @db.Uuid
+  name       String
+  type       PaymentMethodType
+  lastDigits String?           @map("last_digits") @db.VarChar(4)
+  isShared   Boolean           @default(false) @map("is_shared")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  group        FinancialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([groupId])
+  @@index([userId])
+  @@index([type])
+  @@map("payment_methods")
+}
+
+model Transaction {
+  id              String            @id @default(uuid()) @db.Uuid
+  groupId         String            @map("group_id") @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  type            TransactionType
+  amount          Decimal           @db.Decimal(14, 2)
+  categoryId      String?           @map("category_id") @db.Uuid
+  paymentMethodId String?           @map("payment_method_id") @db.Uuid
+  description     String?
+  date            DateTime
+  status          TransactionStatus @default(CONFIRMED)
+  source          TransactionSource @default(MANUAL)
+  isPrivate       Boolean           @default(false) @map("is_private")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  group         FinancialGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  category      Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod?     @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  splits        TransactionSplit[]
+
+  @@index([groupId])
+  @@index([userId])
+  @@index([date])
+  @@index([groupId, date])
+  @@index([groupId, type])
+  @@index([categoryId])
+  @@index([paymentMethodId])
+  @@map("transactions")
+}
+
+model TransactionSplit {
+  id            String      @id @default(uuid()) @db.Uuid
+  transactionId String      @map("transaction_id") @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  amount        Decimal     @db.Decimal(14, 2)
+  percent       Decimal?    @db.Decimal(5, 2)
+  status        SplitStatus @default(PENDING)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([transactionId, userId])
+  @@index([transactionId])
+  @@index([userId])
+  @@map("transaction_splits")
+}
+
+model Goal {
+  id            String     @id @default(uuid()) @db.Uuid
+  groupId       String     @map("group_id") @db.Uuid
+  name          String
+  targetAmount  Decimal    @map("target_amount") @db.Decimal(14, 2)
+  currentAmount Decimal    @default(0) @map("current_amount") @db.Decimal(14, 2)
+  deadline      DateTime?
+  createdBy     String     @map("created_by") @db.Uuid
+  status        GoalStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  group   FinancialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User           @relation("GoalCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([groupId])
+  @@index([createdBy])
+  @@index([status])
+  @@map("goals")
+}
+
+model Budget {
+  id           String   @id @default(uuid()) @db.Uuid
+  groupId      String   @map("group_id") @db.Uuid
+  categoryId   String   @map("category_id") @db.Uuid
+  month        Int
+  year         Int
+  limitAmount  Decimal  @map("limit_amount") @db.Decimal(14, 2)
+  alertPercent Decimal  @default(80) @map("alert_percent") @db.Decimal(5, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  group    FinancialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  category Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([groupId, categoryId, month, year])
+  @@index([groupId])
+  @@index([categoryId])
+  @@index([year, month])
+  @@map("budgets")
+}
+
+model Integration {
+  id         String              @id @default(uuid()) @db.Uuid
+  userId     String              @map("user_id") @db.Uuid
+  provider   IntegrationProvider
+  status     IntegrationStatus   @default(PENDING)
+  secretHash String?             @map("secret_hash")
+  externalId String?             @map("external_id")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+  revokedAt  DateTime?           @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+  @@map("integrations")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  groupId      String   @map("group_id") @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  action       String
+  entity       String
+  entityId     String?  @map("entity_id") @db.Uuid
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  group FinancialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  groupId   String?          @map("group_id") @db.Uuid
+  type      NotificationType
+  title     String
+  body      String?
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group FinancialGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([readAt])
+  @@index([createdAt])
+  @@map("notifications")
+}

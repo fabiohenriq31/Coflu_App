@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Coflu",
+    "slug": "coflu",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "coflu",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
