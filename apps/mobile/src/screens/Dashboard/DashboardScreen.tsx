@@ -36,7 +36,6 @@ type Props = {
 export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Props) => {
   const user = useAuthStore((state) => state.user);
   const activeGroup = useGroupsStore((state) => state.activeGroup);
-  const fetchGroups = useGroupsStore((state) => state.fetchGroups);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [categories, setCategories] = useState<DashboardCategory[]>([]);
   const [members, setMembers] = useState<DashboardMember[]>([]);
@@ -46,6 +45,7 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
 
   const period = useMemo(() => getCurrentPeriod(), []);
   const currency = activeGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
+  const activeGroupId = activeGroup?.id;
 
   const loadDashboard = useCallback(
     async (refreshing = false) => {
@@ -57,10 +57,7 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
       }
 
       try {
-        const userGroups = await fetchGroups();
-        const group = activeGroup ?? userGroups[0];
-
-        if (!group) {
+        if (!activeGroupId) {
           setSummary(null);
           setCategories([]);
           setMembers([]);
@@ -68,9 +65,9 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
         }
 
         const [summaryData, categoryData, memberData] = await Promise.all([
-          dashboardService.getSummary(group.id, period.month, period.year),
-          dashboardService.getCategories(group.id, period.month, period.year),
-          dashboardService.getMembers(group.id, period.month, period.year),
+          dashboardService.getSummary(activeGroupId, period.month, period.year),
+          dashboardService.getCategories(activeGroupId, period.month, period.year),
+          dashboardService.getMembers(activeGroupId, period.month, period.year),
         ]);
 
         setSummary(summaryData);
@@ -83,7 +80,7 @@ export const DashboardScreen = ({ onCreateTransaction, onOpenTransactions }: Pro
         setIsRefreshing(false);
       }
     },
-    [activeGroup, fetchGroups, period.month, period.year],
+    [activeGroupId, period.month, period.year],
   );
 
   useEffect(() => {
