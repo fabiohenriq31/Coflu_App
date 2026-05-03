@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 
-import { WelcomeScreen } from './src/screens/WelcomeScreen';
+import { AppNavigator } from './src/navigation/AppNavigator';
 
 export default function App() {
   return (
     <>
       <StatusBar style="dark" />
-      <WelcomeScreen />
+      <AppNavigator />
     </>
   );
 }

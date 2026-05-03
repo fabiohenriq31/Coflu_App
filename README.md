@@ -72,6 +72,24 @@ npm run dev:mobile
 
 O Expo abrira as opcoes para emulador, dispositivo fisico ou web.
 
+Configure a API do app em `apps/mobile/.env`:
+
+```env
+EXPO_PUBLIC_API_URL=http://localhost:3333
+```
+
+Para Android Emulator, normalmente use:
+
+```env
+EXPO_PUBLIC_API_URL=http://10.0.2.2:3333
+```
+
+Para Expo Go em dispositivo fisico, use o IP da maquina na rede local:
+
+```env
+EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3333
+```
+
 ## Scripts
 
 - `npm run dev`: inicia a API em modo desenvolvimento
