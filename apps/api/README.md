@@ -132,12 +132,6 @@ Se o grupo ja possuir dados financeiros, a API retorna erro seguro. Soft delete 
 
 Lista membros ativos e convidados. Exige ser membro ativo do grupo.
 
-### GET /groups/:groupId/categories
-
-Lista categorias reais do grupo, incluindo categorias iniciais criadas no banco quando o grupo ainda nao possui nenhuma.
-
-Esta rota existe para permitir que o app mobile crie transacoes com `categoryId` valido, sem dados mockados no cliente.
-
 ### POST /groups/:groupId/invite
 
 Cria convite para um usuario existente no Coflu. Envio de e-mail e aceite de convite entram em etapa futura.
@@ -180,6 +174,69 @@ Regras:
 - `admin`: edita grupo e convida/remove membros comuns.
 - `member`: base para criar dados financeiros futuramente.
 - `viewer`: apenas visualiza.
+
+## Rotas de categorias
+
+Categorias sempre pertencem a um grupo financeiro e exigem autenticacao.
+
+Ao criar um grupo, a API cria automaticamente categorias padrao de despesas e receitas. Essas categorias nao podem ser deletadas, mas `owner/admin` podem editar nome, icone e cor.
+
+### GET /groups/:groupId/categories
+
+Lista categorias do grupo, ordenadas por tipo e nome. A resposta mantem `categories` para compatibilidade com o app e tambem separa por `income` e `expense`.
+
+```json
+{
+  "categories": [
+    {
+      "id": "uuid-da-categoria",
+      "groupId": "uuid-do-grupo",
+      "name": "Alimentação",
+      "type": "expense",
+      "icon": "utensils",
+      "color": "#EF4444",
+      "isDefault": true
+    }
+  ],
+  "income": [],
+  "expense": []
+}
+```
+
+### POST /groups/:groupId/categories
+
+Cria categoria customizada. Qualquer membro ativo do grupo pode criar.
+
+```json
+{
+  "name": "Pets",
+  "type": "expense",
+  "color": "#F59E0B"
+}
+```
+
+Tipos permitidos: `income`, `expense`.
+
+### PATCH /groups/:groupId/categories/:categoryId
+
+Edita nome, icone e cor. Apenas `owner/admin`. O `type` da categoria nao pode ser alterado.
+
+```json
+{
+  "name": "Mercado",
+  "color": "#4EBAA4"
+}
+```
+
+### DELETE /groups/:groupId/categories/:categoryId
+
+Exclui categoria customizada. Apenas `owner/admin`.
+
+Regras:
+
+- Categorias padrao nao podem ser deletadas.
+- Categorias com transacoes vinculadas nao podem ser deletadas.
+- Categorias sempre sao vinculadas ao `groupId`; nao ha categorias globais nesta versao.
 
 ## Rotas de transacoes
 

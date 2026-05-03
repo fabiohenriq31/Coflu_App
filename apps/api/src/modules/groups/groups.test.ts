@@ -30,6 +30,7 @@ const mockPrisma = vi.hoisted(() => ({
   },
   category: {
     count: vi.fn(),
+    createMany: vi.fn(),
   },
   paymentMethod: {
     count: vi.fn(),
@@ -129,6 +130,9 @@ describe('groups routes', () => {
       groupMember: {
         create: vi.fn().mockResolvedValueOnce(ownerMember),
       },
+      category: {
+        createMany: vi.fn().mockResolvedValueOnce({ count: 14 }),
+      },
     };
     mockPrisma.$transaction.mockImplementationOnce((callback) => callback(tx));
 
@@ -159,6 +163,18 @@ describe('groups routes', () => {
           role: 'OWNER',
           status: 'ACTIVE',
         }),
+      }),
+    );
+    expect(tx.category.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            groupId,
+            name: 'Alimentação',
+            isDefault: true,
+          }),
+        ]),
+        skipDuplicates: true,
       }),
     );
   });

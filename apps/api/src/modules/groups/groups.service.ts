@@ -10,6 +10,7 @@ import {
 
 import { prisma } from '../../services/prisma.js';
 import { AppError } from '../../utils/app-error.js';
+import { createDefaultCategoriesForGroup } from '../categories/categories.service.js';
 import { requireGroupAdmin, requireGroupMember, requireGroupOwner } from './groups.permissions.js';
 import type {
   CreateGroupInput,
@@ -160,6 +161,8 @@ export const groupsService = {
         },
       });
 
+      await createDefaultCategoriesForGroup(createdGroup.id, transaction);
+
       return transaction.financialGroup.findUniqueOrThrow({
         where: {
           id: createdGroup.id,
@@ -231,7 +234,7 @@ export const groupsService = {
       prisma.transaction.count({ where: { groupId } }),
       prisma.goal.count({ where: { groupId } }),
       prisma.budget.count({ where: { groupId } }),
-      prisma.category.count({ where: { groupId } }),
+      prisma.category.count({ where: { groupId, isDefault: false } }),
       prisma.paymentMethod.count({ where: { groupId } }),
     ]);
 
