@@ -1,4 +1,3 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,15 +11,16 @@ import {
   View,
 } from 'react-native';
 
-import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { getApiErrorMessage } from '../../services/api';
 import { useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+type Props = {
+  onNavigateToRegister: () => void;
+};
 
-export const LoginScreen = ({ navigation }: Props) => {
+export const LoginScreen = ({ onNavigateToRegister }: Props) => {
   const login = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
   const [email, setEmail] = useState('');
@@ -101,7 +101,7 @@ export const LoginScreen = ({ navigation }: Props) => {
           <Pressable
             accessibilityRole="button"
             disabled={isLoading}
-            onPress={() => navigation.navigate('Register')}
+            onPress={onNavigateToRegister}
             style={styles.linkButton}
           >
             <Text style={styles.linkText}>Criar uma conta</Text>

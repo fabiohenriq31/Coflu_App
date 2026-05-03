@@ -1,6 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { LoginScreen } from '../screens/Auth/LoginScreen';
@@ -18,31 +17,19 @@ export type AppStackParamList = {
   Home: undefined;
 };
 
-const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-const AppStack = createNativeStackNavigator<AppStackParamList>();
+type AuthRoute = keyof AuthStackParamList;
 
-const AuthNavigator = () => (
-  <AuthStack.Navigator
-    screenOptions={{
-      headerShown: false,
-      contentStyle: { backgroundColor: colors.background.light },
-    }}
-  >
-    <AuthStack.Screen name="Login" component={LoginScreen} />
-    <AuthStack.Screen name="Register" component={RegisterScreen} />
-  </AuthStack.Navigator>
-);
+const AuthNavigator = () => {
+  const [route, setRoute] = useState<AuthRoute>('Login');
 
-const MainNavigator = () => (
-  <AppStack.Navigator
-    screenOptions={{
-      headerShown: false,
-      contentStyle: { backgroundColor: colors.background.light },
-    }}
-  >
-    <AppStack.Screen name="Home" component={HomeScreen} />
-  </AppStack.Navigator>
-);
+  if (route === 'Register') {
+    return <RegisterScreen onNavigateToLogin={() => setRoute('Login')} />;
+  }
+
+  return <LoginScreen onNavigateToRegister={() => setRoute('Register')} />;
+};
+
+const MainNavigator = () => <HomeScreen />;
 
 export const AppNavigator = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
