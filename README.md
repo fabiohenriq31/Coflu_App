@@ -4,6 +4,9 @@ Coflu e um aplicativo mobile de financas pessoais e familiares com foco em colab
 
 **Slogan:** Financas que fluem juntas.
 
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/87c9f3ee-3dc2-45d6-9147-5f579ae803ab" />
+
+
 A proposta e permitir que pessoas administrem juntas gastos, receitas, metas, orcamentos e decisoes financeiras de forma simples, visual, segura e moderna.
 
 ## Stack
