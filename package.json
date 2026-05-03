@@ -10,8 +10,10 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:mobile\"",
+    "dev:clear": "concurrently \"npm run dev:api\" \"npm run dev:mobile:clear\"",
     "dev:api": "npm run dev --workspace @coflu/api",
     "dev:mobile": "npm run start --workspace @coflu/mobile",
+    "dev:mobile:clear": "npm run start --workspace @coflu/mobile -- --clear",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
