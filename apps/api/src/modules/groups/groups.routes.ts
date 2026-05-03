@@ -5,12 +5,15 @@ import { categoriesRoutes } from '../categories/categories.routes.js';
 import { dashboardRoutes } from '../dashboard/dashboard.routes.js';
 import { transactionsRoutes } from '../transactions/transactions.routes.js';
 import {
+  acceptInvite,
   createGroup,
   deleteGroup,
   getGroup,
+  getInviteCode,
   inviteMember,
   listGroups,
   listMembers,
+  regenerateInviteCode,
   removeMember,
   updateGroup,
   updateMemberRole,
@@ -22,6 +25,7 @@ groupsRoutes.use(authenticate);
 
 groupsRoutes.post('/', createGroup);
 groupsRoutes.get('/', listGroups);
+groupsRoutes.post('/invitations/accept', acceptInvite);
 
 groupsRoutes.use('/:groupId/categories', categoriesRoutes);
 groupsRoutes.use('/:groupId/dashboard', dashboardRoutes);
@@ -33,5 +37,7 @@ groupsRoutes.delete('/:groupId', deleteGroup);
 
 groupsRoutes.get('/:groupId/members', listMembers);
 groupsRoutes.post('/:groupId/invite', inviteMember);
+groupsRoutes.get('/:groupId/invite-code', getInviteCode);
+groupsRoutes.post('/:groupId/invite-code/regenerate', regenerateInviteCode);
 groupsRoutes.patch('/:groupId/members/:memberId/role', updateMemberRole);
 groupsRoutes.delete('/:groupId/members/:memberId', removeMember);

@@ -160,6 +160,7 @@ model FinancialGroup {
   name            String
   type            GroupType
   ownerUserId     String    @map("owner_user_id") @db.Uuid
+  inviteCode      String    @unique @map("invite_code") @db.VarChar(12)
   defaultCurrency String    @default("BRL") @map("default_currency") @db.VarChar(3)
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -175,6 +176,7 @@ model FinancialGroup {
   notifications  Notification[]
 
   @@index([ownerUserId])
+  @@index([inviteCode])
   @@map("financial_groups")
 }
 

@@ -16,6 +16,15 @@ export const memberParamsSchema = groupParamsSchema.extend({
   memberId: z.string().uuid('memberId must be a valid UUID'),
 });
 
+export const acceptInviteSchema = z
+  .object({
+    code: z.string().trim().min(6).max(12).toUpperCase().optional(),
+    groupId: z.string().uuid('groupId must be a valid UUID').optional(),
+  })
+  .refine((value) => Boolean(value.code || value.groupId), {
+    message: 'code or groupId must be provided',
+  });
+
 export const createGroupSchema = z.object({
   name: z.string().trim().min(2, 'Name must have at least 2 characters'),
   type: groupTypeSchema,
@@ -45,3 +54,4 @@ export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
+export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;

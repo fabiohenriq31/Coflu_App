@@ -15,6 +15,7 @@ export type FinancialGroupSummary = {
 
 export type GroupMember = {
   id: string;
+  groupId: string;
   userId: string;
   role: 'owner' | 'admin' | 'member' | 'viewer';
   status: 'active' | 'invited' | 'removed';
@@ -45,6 +46,21 @@ export type InviteMemberPayload = {
   email: string;
   role: 'admin' | 'member' | 'viewer';
 };
+
+export type GroupInviteCode = {
+  groupId: string;
+  code: string;
+};
+
+export type AcceptInvitePayload =
+  | {
+      code: string;
+      groupId?: never;
+    }
+  | {
+      code?: never;
+      groupId: string;
+    };
 
 export const groupsService = {
   async listGroups() {
@@ -79,6 +95,26 @@ export const groupsService = {
 
   async inviteMember(groupId: string, payload: InviteMemberPayload) {
     const response = await api.post<{ member: GroupMember }>(`/groups/${groupId}/invite`, payload);
+
+    return response.data.member;
+  },
+
+  async getInviteCode(groupId: string) {
+    const response = await api.get<{ invite: GroupInviteCode }>(`/groups/${groupId}/invite-code`);
+
+    return response.data.invite;
+  },
+
+  async regenerateInviteCode(groupId: string) {
+    const response = await api.post<{ invite: GroupInviteCode }>(
+      `/groups/${groupId}/invite-code/regenerate`,
+    );
+
+    return response.data.invite;
+  },
+
+  async acceptInvite(payload: AcceptInvitePayload) {
+    const response = await api.post<{ member: GroupMember }>('/groups/invitations/accept', payload);
 
     return response.data.member;
   },

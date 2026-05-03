@@ -7,6 +7,7 @@ import {
   type Prisma,
   type User,
 } from '@prisma/client';
+import { randomBytes } from 'node:crypto';
 
 import { prisma } from '../../services/prisma.js';
 import { AppError } from '../../utils/app-error.js';
@@ -15,6 +16,7 @@ import { requireGroupAdmin, requireGroupMember, requireGroupOwner } from './grou
 import type {
   CreateGroupInput,
   InviteMemberInput,
+  AcceptInviteInput,
   UpdateGroupInput,
   UpdateMemberRoleInput,
 } from './groups.schemas.js';
@@ -52,9 +54,31 @@ const statusByPrisma: Record<MemberStatus, 'invited' | 'active' | 'removed'> = {
   REMOVED: 'removed',
 };
 
+const generateInviteCode = () => randomBytes(5).toString('hex').toUpperCase();
+
+const createUniqueInviteCode = async (database: Pick<typeof prisma, 'financialGroup'> = prisma) => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const inviteCode = generateInviteCode();
+    const existingGroup = await database.financialGroup.findFirst({
+      where: {
+        inviteCode,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingGroup) {
+      return inviteCode;
+    }
+  }
+
+  throw new AppError('Could not generate a unique invite code', 500);
+};
+
 type MemberWithUser = Pick<
   GroupMember,
-  'id' | 'role' | 'status' | 'joinedAt' | 'createdAt' | 'updatedAt' | 'userId'
+  'id' | 'groupId' | 'role' | 'status' | 'joinedAt' | 'createdAt' | 'updatedAt' | 'userId'
 > & {
   user: Pick<User, 'id' | 'name' | 'email' | 'avatarUrl'>;
 };
@@ -76,6 +100,7 @@ const memberInclude = {
 
 const serializeMember = (member: MemberWithUser) => ({
   id: member.id,
+  groupId: member.groupId,
   userId: member.userId,
   role: roleByPrisma[member.role],
   status: statusByPrisma[member.status],
@@ -142,11 +167,13 @@ const findGroupForMember = async (groupId: string) => {
 export const groupsService = {
   async createGroup(userId: string, input: CreateGroupInput) {
     const group = await prisma.$transaction(async (transaction) => {
+      const inviteCode = await createUniqueInviteCode(transaction);
       const createdGroup = await transaction.financialGroup.create({
         data: {
           name: input.name,
           type: groupTypeByInput[input.type],
           ownerUserId: userId,
+          inviteCode,
           defaultCurrency: input.defaultCurrency,
         },
       });
@@ -323,6 +350,116 @@ export const groupsService = {
             userId: invitedUser.id,
             role,
             status: MemberStatus.INVITED,
+          },
+          include: memberInclude,
+        });
+
+    return serializeMember(member);
+  },
+
+  async getInviteCode(userId: string, groupId: string) {
+    await requireGroupAdmin(userId, groupId);
+
+    const group = await prisma.financialGroup.findUnique({
+      where: {
+        id: groupId,
+      },
+      select: {
+        id: true,
+        inviteCode: true,
+      },
+    });
+
+    if (!group) {
+      throw new AppError('Group not found or access denied', 404);
+    }
+
+    return {
+      groupId: group.id,
+      code: group.inviteCode,
+    };
+  },
+
+  async regenerateInviteCode(userId: string, groupId: string) {
+    await requireGroupAdmin(userId, groupId);
+    const inviteCode = await createUniqueInviteCode();
+
+    const group = await prisma.financialGroup.update({
+      where: {
+        id: groupId,
+      },
+      data: {
+        inviteCode,
+      },
+      select: {
+        id: true,
+        inviteCode: true,
+      },
+    });
+
+    return {
+      groupId: group.id,
+      code: group.inviteCode,
+    };
+  },
+
+  async acceptInvite(userId: string, input: AcceptInviteInput) {
+    const group = input.code
+      ? await prisma.financialGroup.findFirst({
+          where: {
+            inviteCode: input.code,
+          },
+          select: {
+            id: true,
+          },
+        })
+      : await prisma.financialGroup.findUnique({
+          where: {
+            id: input.groupId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+    if (!group) {
+      throw new AppError('Invite not found or expired', 404);
+    }
+
+    const existingMember = await prisma.groupMember.findFirst({
+      where: {
+        groupId: group.id,
+        userId,
+      },
+      include: memberInclude,
+    });
+
+    if (existingMember?.status === MemberStatus.ACTIVE) {
+      throw new AppError('User is already an active member of this group', 409);
+    }
+
+    if (input.groupId && existingMember?.status !== MemberStatus.INVITED) {
+      throw new AppError('Invite not found or expired', 404);
+    }
+
+    const member = existingMember
+      ? await prisma.groupMember.update({
+          where: {
+            id: existingMember.id,
+          },
+          data: {
+            status: MemberStatus.ACTIVE,
+            joinedAt: new Date(),
+          },
+          include: memberInclude,
+        })
+      : await prisma.groupMember.create({
+          data: {
+            groupId: group.id,
+            userId,
+            role: MemberRole.MEMBER,
+            status: MemberStatus.ACTIVE,
+            joinedAt: new Date(),
           },
           include: memberInclude,
         });

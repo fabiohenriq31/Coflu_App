@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 
 import { AppError } from '../../utils/app-error.js';
 import {
+  acceptInviteSchema,
   createGroupSchema,
   groupParamsSchema,
   inviteMemberSchema,
@@ -100,6 +101,42 @@ export const inviteMember: RequestHandler = async (request, response, next) => {
     const member = await groupsService.inviteMember(userId, groupId, input);
 
     return response.status(201).json({ member });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getInviteCode: RequestHandler = async (request, response, next) => {
+  try {
+    const userId = getAuthenticatedUserId(request);
+    const { groupId } = groupParamsSchema.parse(request.params);
+    const invite = await groupsService.getInviteCode(userId, groupId);
+
+    return response.status(200).json({ invite });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const regenerateInviteCode: RequestHandler = async (request, response, next) => {
+  try {
+    const userId = getAuthenticatedUserId(request);
+    const { groupId } = groupParamsSchema.parse(request.params);
+    const invite = await groupsService.regenerateInviteCode(userId, groupId);
+
+    return response.status(200).json({ invite });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const acceptInvite: RequestHandler = async (request, response, next) => {
+  try {
+    const userId = getAuthenticatedUserId(request);
+    const input = acceptInviteSchema.parse(request.body);
+    const member = await groupsService.acceptInvite(userId, input);
+
+    return response.status(200).json({ member });
   } catch (error) {
     return next(error);
   }

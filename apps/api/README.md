@@ -134,7 +134,7 @@ Lista membros ativos e convidados. Exige ser membro ativo do grupo.
 
 ### POST /groups/:groupId/invite
 
-Cria convite para um usuario existente no Coflu. Envio de e-mail e aceite de convite entram em etapa futura.
+Cria convite por e-mail para um usuario existente no Coflu. Envio real de e-mail entra em etapa futura; nesta versao a API cria um `GroupMember` com `status=invited`.
 
 ```json
 {
@@ -144,6 +144,49 @@ Cria convite para um usuario existente no Coflu. Envio de e-mail e aceite de con
 ```
 
 Roles permitidas para convite: `admin`, `member`, `viewer`. Nao e permitido convidar diretamente como `owner`.
+
+### GET /groups/:groupId/invite-code
+
+Retorna o codigo de convite do grupo. Apenas `owner/admin`.
+
+Resposta:
+
+```json
+{
+  "invite": {
+    "groupId": "uuid-do-grupo",
+    "code": "ABC123XYZ0"
+  }
+}
+```
+
+### POST /groups/:groupId/invite-code/regenerate
+
+Gera um novo codigo de convite para o grupo. Apenas `owner/admin`.
+
+### POST /groups/invitations/accept
+
+Aceita convite por codigo:
+
+```json
+{
+  "code": "ABC123XYZ0"
+}
+```
+
+Ou aceita convite pendente por e-mail:
+
+```json
+{
+  "groupId": "uuid-do-grupo"
+}
+```
+
+Regras:
+
+- Convite por codigo cria membership `member` ativo para o usuario autenticado.
+- Convite por e-mail exige que ja exista membership `invited` para o usuario autenticado.
+- Usuario ativo no grupo recebe erro seguro de duplicidade.
 
 ### PATCH /groups/:groupId/members/:memberId/role
 

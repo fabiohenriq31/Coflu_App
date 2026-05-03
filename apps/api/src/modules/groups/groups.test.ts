@@ -9,6 +9,7 @@ const mockPrisma = vi.hoisted(() => ({
   financialGroup: {
     create: vi.fn(),
     delete: vi.fn(),
+    findFirst: vi.fn(),
     findUnique: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
@@ -106,7 +107,9 @@ const regularMember = {
 };
 
 const token = signAccessToken(userId);
+const otherToken = signAccessToken(otherUserId);
 const authHeader = { Authorization: `Bearer ${token}` };
+const otherAuthHeader = { Authorization: `Bearer ${otherToken}` };
 
 const mockAuthenticatedUser = () => {
   mockPrisma.user.findFirst.mockResolvedValueOnce(authUser);
@@ -122,6 +125,7 @@ describe('groups routes', () => {
     const tx = {
       financialGroup: {
         create: vi.fn().mockResolvedValueOnce(group),
+        findFirst: vi.fn().mockResolvedValueOnce(null),
         findUniqueOrThrow: vi.fn().mockResolvedValueOnce({
           ...group,
           members: [ownerMember],
@@ -162,6 +166,13 @@ describe('groups routes', () => {
           userId,
           role: 'OWNER',
           status: 'ACTIVE',
+        }),
+      }),
+    );
+    expect(tx.financialGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          inviteCode: expect.any(String),
         }),
       }),
     );
@@ -326,6 +337,170 @@ describe('groups routes', () => {
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
       message: 'User is already a member or has a pending invite',
+    });
+  });
+
+  it('returns the group invite code for owner or admin', async () => {
+    mockAuthenticatedUser();
+    mockPrisma.groupMember.findFirst.mockResolvedValueOnce({
+      ...ownerMember,
+      user: undefined,
+    });
+    mockPrisma.financialGroup.findUnique.mockResolvedValueOnce({
+      id: groupId,
+      inviteCode: 'ABC123XYZ0',
+    });
+
+    const response = await request(app).get(`/groups/${groupId}/invite-code`).set(authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body.invite).toEqual({
+      groupId,
+      code: 'ABC123XYZ0',
+    });
+  });
+
+  it('regenerates the invite code for owner or admin', async () => {
+    mockAuthenticatedUser();
+    mockPrisma.groupMember.findFirst.mockResolvedValueOnce({
+      ...ownerMember,
+      user: undefined,
+    });
+    mockPrisma.financialGroup.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.financialGroup.update.mockResolvedValueOnce({
+      id: groupId,
+      inviteCode: 'NEWCODE123',
+    });
+
+    const response = await request(app)
+      .post(`/groups/${groupId}/invite-code/regenerate`)
+      .set(authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body.invite).toEqual({
+      groupId,
+      code: 'NEWCODE123',
+    });
+    expect(mockPrisma.financialGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          inviteCode: expect.any(String),
+        },
+      }),
+    );
+  });
+
+  it('accepts an invite by code and creates an active member', async () => {
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      ...otherUser,
+      defaultCurrency: 'BRL',
+      theme: 'SYSTEM',
+    });
+    mockPrisma.financialGroup.findFirst.mockResolvedValueOnce({
+      id: groupId,
+    });
+    mockPrisma.groupMember.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.groupMember.create.mockResolvedValueOnce({
+      ...regularMember,
+      status: 'ACTIVE',
+      role: 'MEMBER',
+      joinedAt: now,
+    });
+
+    const response = await request(app)
+      .post('/groups/invitations/accept')
+      .set(otherAuthHeader)
+      .send({
+        code: 'abc123xyz0',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.member).toMatchObject({
+      groupId,
+      userId: otherUserId,
+      role: 'member',
+      status: 'active',
+    });
+    expect(mockPrisma.groupMember.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          groupId,
+          userId: otherUserId,
+          role: 'MEMBER',
+          status: 'ACTIVE',
+          joinedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it('accepts a pending email invite by groupId', async () => {
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      ...otherUser,
+      defaultCurrency: 'BRL',
+      theme: 'SYSTEM',
+    });
+    mockPrisma.financialGroup.findUnique.mockResolvedValueOnce({
+      id: groupId,
+    });
+    mockPrisma.groupMember.findFirst.mockResolvedValueOnce({
+      ...regularMember,
+      status: 'INVITED',
+      joinedAt: null,
+    });
+    mockPrisma.groupMember.update.mockResolvedValueOnce({
+      ...regularMember,
+      status: 'ACTIVE',
+      joinedAt: now,
+    });
+
+    const response = await request(app)
+      .post('/groups/invitations/accept')
+      .set(otherAuthHeader)
+      .send({
+        groupId,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.member).toMatchObject({
+      groupId,
+      userId: otherUserId,
+      status: 'active',
+    });
+    expect(mockPrisma.groupMember.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          status: 'ACTIVE',
+          joinedAt: expect.any(Date),
+        },
+      }),
+    );
+  });
+
+  it('does not accept invite when user is already active', async () => {
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      ...otherUser,
+      defaultCurrency: 'BRL',
+      theme: 'SYSTEM',
+    });
+    mockPrisma.financialGroup.findFirst.mockResolvedValueOnce({
+      id: groupId,
+    });
+    mockPrisma.groupMember.findFirst.mockResolvedValueOnce({
+      ...regularMember,
+      status: 'ACTIVE',
+    });
+
+    const response = await request(app)
+      .post('/groups/invitations/accept')
+      .set(otherAuthHeader)
+      .send({
+        code: 'ABC123XYZ0',
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      message: 'User is already an active member of this group',
     });
   });
 
