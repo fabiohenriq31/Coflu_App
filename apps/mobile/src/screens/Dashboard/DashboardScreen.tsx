@@ -20,19 +20,11 @@ import {
   type DashboardMember,
   type DashboardSummary,
 } from '../../services/dashboard';
-import { groupsService, type FinancialGroupSummary } from '../../services/groups';
 import { useAuthStore } from '../../store/auth.store';
+import { useGroupStore } from '../../store/group.store';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-
-const getCurrentPeriod = () => {
-  const now = new Date();
-
-  return {
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-  };
-};
+import { getCurrentPeriod } from '../../utils/date';
 
 const getMonthLabel = (month: number, year: number) =>
   new Intl.DateTimeFormat('pt-BR', {
@@ -40,10 +32,15 @@ const getMonthLabel = (month: number, year: number) =>
     year: 'numeric',
   }).format(new Date(year, month - 1, 1));
 
-export const DashboardScreen = () => {
+type Props = {
+  onOpenTransactions: () => void;
+};
+
+export const DashboardScreen = ({ onOpenTransactions }: Props) => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const [groups, setGroups] = useState<FinancialGroupSummary[]>([]);
+  const selectedGroup = useGroupStore((state) => state.selectedGroup);
+  const loadGroups = useGroupStore((state) => state.loadGroups);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [categories, setCategories] = useState<DashboardCategory[]>([]);
   const [members, setMembers] = useState<DashboardMember[]>([]);
@@ -52,7 +49,6 @@ export const DashboardScreen = () => {
   const [error, setError] = useState('');
 
   const period = useMemo(() => getCurrentPeriod(), []);
-  const selectedGroup = groups[0] ?? null;
   const currency = selectedGroup?.defaultCurrency ?? user?.defaultCurrency ?? 'BRL';
 
   const loadDashboard = useCallback(
@@ -65,10 +61,8 @@ export const DashboardScreen = () => {
       }
 
       try {
-        const userGroups = await groupsService.listGroups();
+        const userGroups = await loadGroups();
         const firstGroup = userGroups[0];
-
-        setGroups(userGroups);
 
         if (!firstGroup) {
           setSummary(null);
@@ -93,7 +87,7 @@ export const DashboardScreen = () => {
         setIsRefreshing(false);
       }
     },
-    [period.month, period.year],
+    [loadGroups, period.month, period.year],
   );
 
   useEffect(() => {
@@ -143,6 +137,14 @@ export const DashboardScreen = () => {
         </View>
 
         <Text style={styles.period}>{getMonthLabel(period.month, period.year)}</Text>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenTransactions}
+          style={styles.transactionsButton}
+        >
+          <Text style={styles.transactionsButtonText}>Ver transacoes</Text>
+        </Pressable>
 
         {error ? (
           <View style={styles.messageCard}>
@@ -284,6 +286,19 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: 14,
     textTransform: 'capitalize',
+    letterSpacing: 0,
+  },
+  transactionsButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+    borderRadius: 16,
+    backgroundColor: colors.brand.accent,
+  },
+  transactionsButtonText: {
+    ...typography.button,
+    color: colors.text.inverted,
+    fontSize: 15,
     letterSpacing: 0,
   },
   section: {

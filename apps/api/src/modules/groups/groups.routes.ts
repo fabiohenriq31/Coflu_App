@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { authenticate } from '../../middlewares/authenticate.js';
+import { categoriesRoutes } from '../categories/categories.routes.js';
 import { dashboardRoutes } from '../dashboard/dashboard.routes.js';
 import { transactionsRoutes } from '../transactions/transactions.routes.js';
 import {
@@ -22,6 +23,7 @@ groupsRoutes.use(authenticate);
 groupsRoutes.post('/', createGroup);
 groupsRoutes.get('/', listGroups);
 
+groupsRoutes.use('/:groupId/categories', categoriesRoutes);
 groupsRoutes.use('/:groupId/dashboard', dashboardRoutes);
 groupsRoutes.use('/:groupId/transactions', transactionsRoutes);
 

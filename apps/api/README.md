@@ -132,6 +132,12 @@ Se o grupo ja possuir dados financeiros, a API retorna erro seguro. Soft delete 
 
 Lista membros ativos e convidados. Exige ser membro ativo do grupo.
 
+### GET /groups/:groupId/categories
+
+Lista categorias reais do grupo, incluindo categorias iniciais criadas no banco quando o grupo ainda nao possui nenhuma.
+
+Esta rota existe para permitir que o app mobile crie transacoes com `categoryId` valido, sem dados mockados no cliente.
+
 ### POST /groups/:groupId/invite
 
 Cria convite para um usuario existente no Coflu. Envio de e-mail e aceite de convite entram em etapa futura.

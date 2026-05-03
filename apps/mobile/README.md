@@ -40,6 +40,18 @@ A tela autenticada carrega o primeiro grupo ativo do usuario e busca dados reais
 
 Se o usuario ainda nao tiver grupo, o app exibe um estado vazio sem dados mockados.
 
+## Transacoes
+
+O app permite listar, criar, editar, detalhar e excluir transacoes reais do primeiro grupo ativo do usuario:
+
+- `GET /groups/:groupId/transactions`
+- `POST /groups/:groupId/transactions`
+- `GET /groups/:groupId/transactions/:transactionId`
+- `PATCH /groups/:groupId/transactions/:transactionId`
+- `DELETE /groups/:groupId/transactions/:transactionId`
+
+Categorias sao carregadas via `GET /groups/:groupId/categories`. Se o grupo ainda nao tiver categorias, a API cria categorias iniciais no banco.
+
 ## Rodando
 
 ```bash
