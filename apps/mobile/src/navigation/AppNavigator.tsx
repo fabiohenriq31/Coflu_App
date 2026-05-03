@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { LoginScreen } from '../screens/Auth/LoginScreen';
 import { RegisterScreen } from '../screens/Auth/RegisterScreen';
-import { HomeScreen } from '../screens/Home/HomeScreen';
+import { DashboardScreen } from '../screens/Dashboard/DashboardScreen';
 import { useAuthStore } from '../store/auth.store';
 import { colors } from '../theme/colors';
 
@@ -14,7 +14,7 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
-  Home: undefined;
+  Dashboard: undefined;
 };
 
 type AuthRoute = keyof AuthStackParamList;
@@ -29,7 +29,7 @@ const AuthNavigator = () => {
   return <LoginScreen onNavigateToRegister={() => setRoute('Register')} />;
 };
 
-const MainNavigator = () => <HomeScreen />;
+const MainNavigator = () => <DashboardScreen />;
 
 export const AppNavigator = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);

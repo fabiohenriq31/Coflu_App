@@ -10,6 +10,7 @@ export const colors = {
   },
   feedback: {
     success: '#4EBAA4',
+    danger: '#EF4444',
   },
   background: {
     light: '#FFFFFF',

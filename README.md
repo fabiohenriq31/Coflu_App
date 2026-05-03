@@ -93,6 +93,8 @@ Para Expo Go em dispositivo fisico, use o IP da maquina na rede local:
 EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3333
 ```
 
+Depois do login, o app carrega o primeiro grupo ativo do usuario e exibe o dashboard financeiro real do mes atual.
+
 ## Scripts
 
 - `npm run dev`: inicia a API em modo desenvolvimento

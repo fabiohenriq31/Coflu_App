@@ -28,6 +28,17 @@ Durante desenvolvimento, o app tambem tenta uma URL fallback derivada do host do
 - Token enviado em `Authorization: Bearer`
 - Restauracao de sessao via `GET /auth/me`
 - Logout local com chamada stateless para `POST /auth/logout`
+- Dashboard inicial consumindo `/groups` e `/groups/:groupId/dashboard/*`
+
+## Dashboard
+
+A tela autenticada carrega o primeiro grupo ativo do usuario e busca dados reais do mes atual:
+
+- `GET /groups/:groupId/dashboard/summary`
+- `GET /groups/:groupId/dashboard/categories`
+- `GET /groups/:groupId/dashboard/members`
+
+Se o usuario ainda nao tiver grupo, o app exibe um estado vazio sem dados mockados.
 
 ## Rodando
 
